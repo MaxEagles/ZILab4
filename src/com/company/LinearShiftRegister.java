@@ -8,14 +8,14 @@ public class LinearShiftRegister {
     private String cells;
     private String links;
 
-    public LinearShiftRegister(String keyFilename) throws Exception{
+    public LinearShiftRegister(String keyFilename) throws Exception {
         readKeyFromFile(keyFilename);
     }
 
     public String makeGamma(String input) {
         StringBuilder gamma = new StringBuilder();
         for(int i = 0; i < input.length(); i++) {
-            System.out.println(cells + " - состояние регистра " + (i + 1));
+            System.out.println(cells + " - состояние регистра № " + (i + 1));
             gamma.append(performStep(input.charAt(i)));
         }
         return gamma.toString();
