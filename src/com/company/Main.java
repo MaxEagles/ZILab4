@@ -1,10 +1,11 @@
 package com.company;
 
+import javax.sound.midi.Soundbank;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 public class Main {
     //Двухступенчатый генератор псевдослучайных чисел
@@ -20,29 +21,9 @@ public class Main {
     public static void main(String[] args) {
         makeCodeTable();
         try {
+            encodeDecode("message.txt", "encode.txt");
 
-            readMessageFromFile("message.txt");
-            binaryMessage = convertMessageToBinary();
-            System.out.println(message + " - исходное сообщение");
-            makeBlocks();
-
-            LinearShiftRegister firstStage = new LinearShiftRegister("key.txt");
-            StringBuilder text = new StringBuilder();
-            for(int i = 0; i < blocks.length; i++) {
-                System.out.println((i+1) + "-й блок, первая ступень:");
-                String secondStageInput = firstStage.makeGamma(blocks[i]);
-                System.out.println(secondStageInput + " - гамма для входа второй ступени");
-                System.out.println("Вторая ступень:");
-                String gammaPart = LinearCongruentGenerator.makeGamma(secondStageInput);
-                System.out.println("гамма шифра:\n" + gammaPart);
-                System.out.println(blocks[i] + " - блок № " + (i + 1));
-                String encodedBinary = encode(gammaPart, blocks[i]);
-                System.out.println(encodedBinary + " - зашифрованный блок №" + (i + 1));
-                String encodedText = convertBinaryToText(encodedBinary);
-                System.out.println(encodedText + " - текст блока № " + (i + 1));
-                text.append(encodedText);
-            }
-            System.out.println(text + " - полный текст");
+            encodeDecode("encode.txt", "decode.txt");
         }
         catch (Exception ex) {
             System.out.println(ex.getMessage());
@@ -59,13 +40,10 @@ public class Main {
         }
     }
 
-    private static void readMessageFromFile(String filename) {
+    private static void readMessageFromFile(String filename) throws Exception{
         try(FileReader fr = new FileReader(filename)) {
             Scanner scanner = new Scanner(fr);
             message = scanner.nextLine();
-        }
-        catch (Exception ex) {
-            System.out.println(ex.getMessage());
         }
     }
 
@@ -77,16 +55,10 @@ public class Main {
                 sb.append(code);
             }
         }
-        while(sb.length() % BLOCK_SIZE != 0) {
-            sb.append("0");
-        }
         return sb.toString();
     }
 
     private static String convertBinaryToText(String binary) {
-        while (binary.length() % BITS_PER_LETTER != 0) {
-            binary += "0";
-        }
         int lettersCount = binary.length() / BITS_PER_LETTER;
         StringBuilder text = new StringBuilder();
         Collection<Character> letters = codeTable.keySet();
@@ -106,14 +78,17 @@ public class Main {
     private static void makeBlocks() {
         String binaryMessageCopy = binaryMessage;
         int blocksCount = binaryMessageCopy.length() / BLOCK_SIZE;
+        if(binaryMessageCopy.length() % BLOCK_SIZE != 0)
+            blocksCount++;
         blocks = new String[blocksCount];
-        for(int i = 0; i < blocksCount; i++) {
+        for(int i = 0; i < blocksCount - 1; i++) {
             blocks[i] = binaryMessageCopy.substring(0, BLOCK_SIZE);
             binaryMessageCopy = binaryMessageCopy.substring(BLOCK_SIZE);
         }
+        blocks[blocksCount - 1] = binaryMessageCopy;
     }
 
-    private static String encode(String gamma, String block) {
+    private static String encodeBlock(String gamma, String block) {
         StringBuilder sb = new StringBuilder();
         for(int i = 0; i < block.length(); i++) {
             char tmp = charXOR(block.charAt(i), gamma.charAt(i));
@@ -128,5 +103,41 @@ public class Main {
         else return '1';
     }
 
+    private static void encodeDecode(String messageFileName, String destinationFileName) throws Exception {
+        prepareMessage(messageFileName);
+        LinearShiftRegister firstStage = new LinearShiftRegister("key.txt");
+        StringBuilder binary = new StringBuilder();
+        for (String block : blocks) {
+            String secondStageInput = firstStage.makeGamma();
+            System.out.println(secondStageInput + " - вход второй ступени");
+            binary.append(secondStage(secondStageInput, block));
+        }
+        String text = convertBinaryToText(binary.toString());
+        System.out.println(text + " - текст");
+        writeToFile( destinationFileName, text);
+    }
 
+    private static void prepareMessage(String messageFileName) throws Exception {
+        readMessageFromFile(messageFileName);
+        System.out.println(message + " - исходное сообщение");
+        binaryMessage = convertMessageToBinary();
+        System.out.println(binaryMessage + " - сообщение в двоичном виде");
+        makeBlocks();
+    }
+
+    private static String secondStage(String secondStageInput, String block) {
+        String gamma = LinearCongruentGenerator.makeGamma(secondStageInput);
+        System.out.println("гамма шифра:");
+        System.out.println(gamma);
+        System.out.println(block + " - блок");
+        String encodedBinary = encodeBlock(gamma, block);
+        System.out.println(encodedBinary + " - результат");
+        return encodedBinary;
+    }
+
+    private static void writeToFile(String filename, String text) throws Exception {
+        try(FileWriter fw = new FileWriter(filename)) {
+            fw.write(text);
+        }
+    }
 }

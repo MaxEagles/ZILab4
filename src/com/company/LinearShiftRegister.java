@@ -5,6 +5,7 @@ import java.util.Scanner;
 
 public class LinearShiftRegister {
     private static final int DIGITS = 17;
+    private static final int GAMMA_SIZE = 32;
     private String cells;
     private String links;
 
@@ -12,11 +13,11 @@ public class LinearShiftRegister {
         readKeyFromFile(keyFilename);
     }
 
-    public String makeGamma(String input) {
+    public String makeGamma() {
         StringBuilder gamma = new StringBuilder();
-        for(int i = 0; i < input.length(); i++) {
+        for(int i = 0; i < GAMMA_SIZE; i++) {
             System.out.println(cells + " - состояние регистра № " + (i + 1));
-            gamma.append(performStep(input.charAt(i)));
+            gamma.append(performStep(cells.charAt(cells.length() - 1)));
         }
         return gamma.toString();
     }
